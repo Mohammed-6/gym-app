@@ -6,7 +6,11 @@ import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 import routes from "./routes";
 
 const LOCALHOST_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/;
-const allowedOrigins = env.corsOrigin.split(",").map((origin) => origin.trim());
+
+// Hardcoded so it's always allowed regardless of the deployed CORS_ORIGIN env var.
+const HARDCODED_ORIGINS = ["https://gym-app-web-1098266546452.asia-south1.run.app"];
+
+const allowedOrigins = [...HARDCODED_ORIGINS, ...env.corsOrigin.split(",").map((origin) => origin.trim())];
 
 function isOriginAllowed(origin: string): boolean {
   if (allowedOrigins.includes(origin)) {
