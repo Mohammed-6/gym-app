@@ -123,8 +123,11 @@ jobs:
 
       # The API's CORS_ORIGIN can only be set correctly once the web service's real URL is
       # known, which isn't until after deploy-web finishes — hence this separate final step.
+      # Includes the API's own URL too (some tooling calls the API directly from a page
+      # hosted at that origin); "^@^" swaps gcloud's pair-separator to "@" since the value
+      # itself needs a comma between the two origins.
       - name: Point API's CORS_ORIGIN at the deployed web URL
         run: |
           gcloud run services update ${{ env.API_SERVICE }} \
             --region=${{ env.REGION }} \
-            --update-env-vars=CORS_ORIGIN=${{ needs.deploy-web.outputs.web-url }}
+            --update-env-vars="^@^CORS_ORIGIN=${{ needs.deploy-web.outputs.web-url }},${{ needs.deploy-api.outputs.api-url }}"
