@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/features/auth/auth-context";
 import { getApiErrorMessage } from "@/lib/api";
+import { QrCode } from "@/components/qr/qr-code";
+
+const APP_URL = "https://gym-app-web-1098266546452.asia-south1.run.app";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Enter a valid email address"),
@@ -65,6 +68,11 @@ export default function LoginPage() {
             {isSubmitting ? "Signing in..." : "Sign in"}
           </Button>
         </form>
+
+        <div className="mt-6 flex flex-col items-center border-t border-slate-100 pt-6">
+          <QrCode url={APP_URL} size={140} downloadName="gym-manager-login" />
+          <p className="mt-2 text-xs text-slate-400">Scan to open on your phone</p>
+        </div>
       </div>
     </div>
   );
