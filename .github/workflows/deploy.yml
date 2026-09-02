@@ -1,0 +1,130 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  # Not secret — edit directly here if you deploy to a different region/repo name.
+  REGION: asia-south1
+  ARTIFACT_REPO: gym-app
+  API_SERVICE: gym-app-api
+  WEB_SERVICE: gym-app-web
+
+jobs:
+  deploy-api:
+    runs-on: ubuntu-latest
+    outputs:
+      api-url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Ensure Artifact Registry repo exists
+        run: |
+          gcloud artifacts repositories describe ${{ env.ARTIFACT_REPO }} \
+            --location=${{ env.REGION }} 2>/dev/null || \
+          gcloud artifacts repositories create ${{ env.ARTIFACT_REPO }} \
+            --repository-format=docker --location=${{ env.REGION }}
+
+      - name: Build and push image
+        env:
+          IMAGE: ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.API_SERVICE }}:${{ github.sha }}
+        run: |
+          docker build -f apps/api/Dockerfile -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Write runtime env vars
+        # The 'EOF' delimiter is quoted so the shell does not try to expand $ or backticks
+        # that might appear inside secret values (e.g. a MongoDB password) — GitHub Actions
+        # has already substituted the ${{ secrets.* }} placeholders by this point regardless.
+        run: |
+          cat > api-env.yaml <<'EOF'
+          MONGODB_URI: "${{ secrets.MONGODB_URI }}"
+          JWT_SECRET: "${{ secrets.JWT_SECRET }}"
+          JWT_EXPIRES_IN: "${{ secrets.JWT_EXPIRES_IN || '7d' }}"
+          GCP_STORAGE_BUCKET: "${{ secrets.GCP_STORAGE_BUCKET }}"
+          GCP_PROJECT_ID: "${{ secrets.GCP_PROJECT_ID }}"
+          GCP_SERVICE_ACCOUNT_KEY: '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}'
+          EOF
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        env:
+          IMAGE: ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.API_SERVICE }}:${{ github.sha }}
+        run: |
+          gcloud run deploy ${{ env.API_SERVICE }} \
+            --image="$IMAGE" \
+            --region=${{ env.REGION }} \
+            --platform=managed \
+            --allow-unauthenticated \
+            --env-vars-file=api-env.yaml
+          echo "url=$(gcloud run services describe ${{ env.API_SERVICE }} --region=${{ env.REGION }} --format='value(status.url)')" >> "$GITHUB_OUTPUT"
+
+  deploy-web:
+    needs: deploy-api
+    runs-on: ubuntu-latest
+    outputs:
+      web-url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push image
+        env:
+          IMAGE: ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.WEB_SERVICE }}:${{ github.sha }}
+          # Baked into the client bundle at build time — the API service must already exist,
+          # which is why this job depends on deploy-api.
+          NEXT_PUBLIC_API_URL: ${{ needs.deploy-api.outputs.api-url }}/api
+        run: |
+          docker build -f apps/web/Dockerfile \
+            --build-arg NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" \
+            -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        env:
+          IMAGE: ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.WEB_SERVICE }}:${{ github.sha }}
+        run: |
+          gcloud run deploy ${{ env.WEB_SERVICE }} \
+            --image="$IMAGE" \
+            --region=${{ env.REGION }} \
+            --platform=managed \
+            --allow-unauthenticated
+          echo "url=$(gcloud run services describe ${{ env.WEB_SERVICE }} --region=${{ env.REGION }} --format='value(status.url)')" >> "$GITHUB_OUTPUT"
+
+  update-api-cors:
+    needs: [deploy-api, deploy-web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      # The API's CORS_ORIGIN can only be set correctly once the web service's real URL is
+      # known, which isn't until after deploy-web finishes — hence this separate final step.
+      - name: Point API's CORS_ORIGIN at the deployed web URL
+        run: |
+          gcloud run services update ${{ env.API_SERVICE }} \
+            --region=${{ env.REGION }} \
+            --update-env-vars=CORS_ORIGIN=${{ needs.deploy-web.outputs.web-url }}
