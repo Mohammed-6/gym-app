@@ -10,3 +10,7 @@ export async function fetchCurrentUser() {
   const { data } = await api.get<{ data: AuthUser }>("/auth/me");
   return data.data;
 }
+
+export async function changeOwnPassword(currentPassword: string, newPassword: string) {
+  await api.patch("/auth/change-password", { currentPassword, newPassword });
+}

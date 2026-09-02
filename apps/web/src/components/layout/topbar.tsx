@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/auth-context";
@@ -12,10 +13,10 @@ export function Topbar() {
       <span className="text-sm font-medium text-slate-900 md:hidden">Gym Manager</span>
       <div className="ml-auto flex items-center gap-3">
         {user && (
-          <div className="text-right">
+          <Link href="/profile" className="text-right hover:opacity-70">
             <p className="text-sm font-medium text-slate-900">{user.name}</p>
             <p className="text-xs capitalize text-slate-500">{user.role}</p>
-          </div>
+          </Link>
         )}
         <Button variant="ghost" size="icon" onClick={logout} aria-label="Log out">
           <LogOut className="h-4 w-4" />

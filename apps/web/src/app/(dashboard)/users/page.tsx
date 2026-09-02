@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { getApiErrorMessage } from "@/lib/api";
 import { useAuth } from "@/features/auth/auth-context";
 import { deleteUser, listUsers } from "@/features/users/api";
 import { UserFormDialog } from "@/features/users/user-form-dialog";
+import { ChangePasswordDialog } from "@/features/users/change-password-dialog";
 import { StaffUser } from "@/features/users/types";
 
 export default function UsersPage() {
@@ -19,6 +20,8 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<StaffUser | null>(null);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [passwordUser, setPasswordUser] = useState<StaffUser | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   function refresh() {
@@ -52,6 +55,11 @@ export default function UsersPage() {
   function openEditDialog(user: StaffUser) {
     setEditingUser(user);
     setDialogOpen(true);
+  }
+
+  function openPasswordDialog(user: StaffUser) {
+    setPasswordUser(user);
+    setPasswordDialogOpen(true);
   }
 
   async function handleDelete(user: StaffUser) {
@@ -125,6 +133,10 @@ export default function UsersPage() {
                     <Pencil className="h-4 w-4" />
                     Edit
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => openPasswordDialog(user)}>
+                    <KeyRound className="h-4 w-4" />
+                    Change Password
+                  </DropdownMenuItem>
                   <DropdownMenuItem danger onClick={() => handleDelete(user)}>
                     <Trash2 className="h-4 w-4" />
                     Delete
@@ -137,6 +149,7 @@ export default function UsersPage() {
       </Table>
 
       <UserFormDialog open={dialogOpen} onOpenChange={setDialogOpen} user={editingUser} onSaved={refresh} />
+      <ChangePasswordDialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen} user={passwordUser} />
     </div>
   );
 }
