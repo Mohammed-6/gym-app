@@ -10,6 +10,7 @@ import receiptRoutes from "../modules/receipts/receipt.routes";
 import dashboardRoutes from "../modules/dashboard/dashboard.routes";
 import attendanceRoutes from "../modules/attendance/attendance.routes";
 import settingsRoutes from "../modules/settings/settings.routes";
+import issueReportRoutes from "../modules/issue-reports/issue-report.routes";
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.use("/receipts", receiptRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/attendance", attendanceRoutes);
 router.use("/settings", settingsRoutes);
+router.use("/issue-reports", issueReportRoutes);
 
 export default router;

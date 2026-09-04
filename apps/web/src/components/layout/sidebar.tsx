@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Bug,
   Building2,
   ClipboardList,
   CreditCard,
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
   { label: "Membership Plans", href: "/membership-plans", icon: ClipboardList },
   { label: "Payments", href: "/payments", icon: CreditCard },
   { label: "Receipts", href: "/receipts", icon: Receipt },
+  { label: "Issue Reports", href: "/issue-reports", icon: Bug },
   { label: "Branches", href: "/branches", icon: Building2, adminOnly: true },
   { label: "Users", href: "/users", icon: UserCog, adminOnly: true },
   { label: "Settings", href: "/settings", icon: Settings },

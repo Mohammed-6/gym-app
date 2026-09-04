@@ -12,3 +12,6 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export const PAYMENT_PURPOSES = ["membership", "due_settlement", "advance", "other"] as const;
 export type PaymentPurpose = (typeof PAYMENT_PURPOSES)[number];
+
+export const ISSUE_STATUSES = ["pending", "ai_resolve", "git_push", "approve", "rejected"] as const;
+export type IssueStatus = (typeof ISSUE_STATUSES)[number];
